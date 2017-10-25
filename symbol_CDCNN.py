@@ -8,7 +8,7 @@ def print_inferred_shape(name, net):
     print name+":", ou
 
 def residual_unit(data, num_filter, name, short_skip=False, bn_mom=0.9, workspace=256):
-    conv1 = mx.sym.Convolution(data=data, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=None, workspace=256, no_bias=True, name=name+'_conv1')
+    conv1 = mx.sym.Convolution(data=data, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=(1,1), workspace=256, no_bias=True, name=name+'_conv1')
     print_inferred_shape(name+'_conv1', conv1)
     bn1 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name+'_bn1')
     act1 = mx.sym.Activation(data=bn1, act_type='relu', name=name+'_relu1')
@@ -19,15 +19,16 @@ def residual_unit(data, num_filter, name, short_skip=False, bn_mom=0.9, workspac
     act2 = mx.sym.Activation(data=bn2, act_type='relu', name=name+'_relu2')
     conv3 = mx.sym.Convolution(data=act2, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=(1,1), workspace=256, no_bias=True, name=name+'_conv3')
     bn3 = mx.sym.BatchNorm(data=conv3, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name+'_bn3')
-
+    
     if short_skip:
-        eltwise = conv1+conv3
+        eltwise = act1+bn3
         return mx.sym.Activation(data=eltwise, act_type='relu', name=name+'_relu3')
     else:
-        return mx.sym.Activation(data=conv3, act_type='relu', name=name+'_relu3')
+        return mx.sym.Activation(data=bn3, act_type='relu', name=name+'_relu3')
+
 
 def residual_unit2(data, num_filter, name, short_skip=False, bn_mom=0.9, workspace=256):
-    conv1 = mx.sym.Convolution(data=data, num_filter=num_filter, kernel=(1,1), stride=(1,1), pad=None, workspace=256, no_bias=True, name=name+'_conv1')
+    conv1 = mx.sym.Convolution(data=data, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=(1,1), workspace=256, no_bias=True, name=name+'_conv1')
     print_inferred_shape(name+'_conv1', conv1)
     bn1 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name+'_bn1')
     act1 = mx.sym.Activation(data=bn1, act_type='relu', name=name+'_relu1')
@@ -35,22 +36,34 @@ def residual_unit2(data, num_filter, name, short_skip=False, bn_mom=0.9, workspa
     conv2 = mx.sym.Convolution(data=act1, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=(1,1), workspace=256, no_bias=True, name=name+'_conv2')
     print_inferred_shape(name+'_conv2', conv2)
     bn2 = mx.sym.BatchNorm(data=conv2, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name+'_bn2')
-    act2 = mx.sym.Activation(data=bn2, act_type='relu', name=name+'_relu2')
-    conv3 = mx.sym.Convolution(data=act2, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=(1,1), workspace=256, no_bias=True, name=name+'_conv3')
 
     if short_skip:
-        eltwise = conv1+conv3
-        return mx.sym.Activation(data=eltwise, act_type='relu', name=name+'_relu3')
+        eltwise = data+conv2
+        return eltwise
     else:
-        return mx.sym.Activation(data=conv3, act_type='relu', name=name+'_relu3')
+        return conv2
 
+def residual_unit3(conv0, num_filter, name, short_skip=False, bn_mom=0.9, workspace=256):
+    bn0 = mx.sym.BatchNorm(data=conv0, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name+'_bn0')
+    act0 = mx.sym.Activation(data=bn0, act_type='relu', name=name+'_relu0')
 
-
+    conv1 = mx.sym.Convolution(data=act0, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=(1,1), workspace=256, no_bias=True, name=name+'_conv2')
+    print_inferred_shape(name+'_conv1', conv1)
+    bn1 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, momentum=bn_mom, eps=2e-5, name=name+'_bn1')
+    act1 = mx.sym.Activation(data=bn1, act_type='relu', name=name+'_relu1')
+    
+    conv2 = mx.sym.Convolution(data=act1, num_filter=num_filter, kernel=(3,3), stride=(1,1), pad=(1,1), workspace=256, no_bias=True, name=name+'_conv3')
+    print_inferred_shape(name+'_conv2', conv2)
+    if short_skip:
+        eltwise = conv0+conv2
+        return eltwise
+    else:
+        return conv2
 
 def CDCNN(short_skip=False, long_skip="Concat"):
     data = mx.symbol.Variable("data")
     print_inferred_shape("Stage1_Input", data)
-    stage1d = residual_unit(data, 32, "Stage1D"); print
+    stage1d = residual_unit(data, 32, "Stage1D", short_skip); print
     
     stage2d = mx.symbol.Pooling(data=stage1d, name='Stage2D_pool', pool_type="max", kernel=(2, 2), stride=(2, 2))
     print_inferred_shape("Stage2D_pool", stage2d)

@@ -5,11 +5,15 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 from MaskIter import MaskIter
+from SegmentationLoss import SegmentationLoss
 from symbol_CDCNN import *
 
 def get_lr_scheduler(args, kv):
+    if args.lr_step_epochs == None:
+        return (args.lr, None)
     if 'lr_factor' not in args or args.lr_factor >= 1:
         return (args.lr, None)
+
         
     epoch_size = args.num_examples / args.batch_size
     if 'dist' in args.kv_store:
@@ -42,7 +46,7 @@ if __name__ == "__main__":
     parser.add_argument('--monitor', dest='monitor', type=int, default=0, help='log network parameters every N iters if larger than 0')
     parser.add_argument('--lr', type=float, default=0.03, help='the ratio to reduce lr on each step')
     parser.add_argument('--lr-factor', type=float, default=0.1, help='the ratio to reduce lr on each step')
-    parser.add_argument('--lr-step-epochs', type=str, help='the epochs to reduce the lr, e.g. 45,90')
+    parser.add_argument('--lr-step-epochs', type=str, default = None, help='the epochs to reduce the lr, e.g. 45,90')
     parser.add_argument('--num-examples', type=int, default=4584, help='the ratio to reduce lr on each step')
     parser.add_argument('--load-epoch', type=int, default=0, help='load the model on an epoch using the model-load-prefix')
     args = parser.parse_args()
@@ -75,7 +79,7 @@ if __name__ == "__main__":
             kvstore            = kv,
             optimizer          = "adam",
             optimizer_params   = optimizer_params,
-            eval_metric        = CustomLoss(),
+            eval_metric        = SegmentationLoss(loss_function="Jaccard_Loss"),
             batch_end_callback = batch_end_callbacks,
             epoch_end_callback = mx.callback.do_checkpoint(args.model_prefix if kv.rank == 0 else "%s-%d" % (args.model_prefix, kv.rank)),
             allow_missing      = True,
@@ -92,7 +96,7 @@ if __name__ == "__main__":
             kvstore            = kv,
             optimizer          = "adam",
             optimizer_params   = optimizer_params,
-            eval_metric        = CustomLoss(),
+            eval_metric        = SegmentationLoss(loss_function="Jaccard_Loss"),
             batch_end_callback = batch_end_callbacks,
             epoch_end_callback = mx.callback.do_checkpoint(args.model_prefix if kv.rank == 0 else "%s-%d" % (args.model_prefix, kv.rank)),
             allow_missing      = True,

@@ -1,4 +1,5 @@
 import mxnet as mx
+import numpy as np
 
 def RSME(labels, preds):
         return np.sqrt(np.mean((labels- preds.clip(0, 1)) ** 2))

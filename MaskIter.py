@@ -3,7 +3,6 @@ import sys, os
 import random
 import cv2
 import time
-import helpers
 import mxnet as mx
 from mxnet.io import DataIter
 from mxnet.io import DataBatch
